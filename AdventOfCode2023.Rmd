@@ -1,0 +1,258 @@
+---
+title: "Advent Of Code 2023"
+author: "Alanah Grant-St James"
+date: "2023-12-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Library
+```{r}
+library(magrittr)
+library(readr)
+library(stringr)
+library(dplyr)
+```
+
+
+#Day 1.1
+```{r}
+data <- read.delim("data/day1.txt", header = FALSE)
+data$remove_letters <- gsub("[^0-9]", "", data$V1)
+data$first_num <- substr(data$remove_letters, 1, 1)
+data$last_num <- NA
+for (row in data$remove_letters) {
+  len <- nchar(row)
+  data$last_num[data$remove_letters==row] <- substr(data$remove_letters[data$remove_letters==row], len, len+1)
+}
+
+data$final_num <- as.numeric(paste0(data$first_num, data$last_num))
+sum(data$final_num)
+```
+#Day 1.2
+```{r}
+data <- read.delim("data/day1.txt", header = FALSE)
+data$adjusted <- data$V1
+data$adjusted <- gsub("oneight", "18", data$adjusted)
+data$adjusted <- gsub("threeight", "38", data$adjusted)
+data$adjusted <- gsub("fiveight", "58", data$adjusted)
+data$adjusted <- gsub("nineight", "98", data$adjusted)
+data$adjusted <- gsub("eightwo", "82", data$adjusted)
+data$adjusted <- gsub("eighthree", "83", data$adjusted)
+data$adjusted <- gsub("twone", "21", data$adjusted)
+data$adjusted <- gsub("sevenine", "79", data$adjusted)
+
+data$adjusted <- gsub("one", "1", data$adjusted)
+data$adjusted <- gsub("two", "2", data$adjusted)
+data$adjusted <- gsub("three", "3", data$adjusted)
+data$adjusted <- gsub("four", "4", data$adjusted)
+data$adjusted <- gsub("five", "5", data$adjusted)
+data$adjusted <- gsub("six", "6", data$adjusted)
+data$adjusted <- gsub("seven", "7", data$adjusted)
+data$adjusted <- gsub("eight", "8", data$adjusted)
+data$adjusted <- gsub("nine", "9", data$adjusted)
+data$remove_letters <- gsub("[^0-9]", "", data$adjusted)
+data$first_num <- substr(data$remove_letters, 1, 1)
+data$last_num <- NA
+for (row in data$remove_letters) {
+  len <- nchar(row)
+  data$last_num[data$remove_letters==row] <- substr(data$remove_letters[data$remove_letters==row], len, len+1)
+}
+
+data$final_num <- as.numeric(paste0(data$first_num, data$last_num))
+sum(data$final_num)
+```
+#Day 2.1
+```{r}
+data <- read.delim("data/day2.txt", header = FALSE)
+# remove "Game "
+data$V1 <- gsub("Game ", "", data$V1)
+data$game_index <- NA
+data$red <- 0
+data$blue <- 0
+data$green <- 0
+for (n in 1:length(data$V1)) {
+  data$game_index[n] <- str_split(data$V1[n], ": ")[[1]][1]
+  games <- str_split(data$V1[n], ": ")[[1]][2]
+  rounds <- str_split(games, "; ")[[1]]
+  for (round in c(1:length(rounds))) {
+    # print(round)
+    round_data <- rounds[round]
+    test_data <- str_split(round_data, ", ")
+    for (info_num in c(1:length(test_data[[1]]))) {
+      if (grepl("red", test_data[[1]][info_num])) {
+        data$red[n] <- max(
+          c(data$red[n], 
+            as.numeric(gsub("[^0-9]", "", test_data[[1]][info_num]))))
+      }
+      if (grepl("blue", test_data[[1]][info_num])) {
+        data$blue[n] <- max(
+          c(data$blue[n], 
+            as.numeric(gsub("[^0-9]", "", test_data[[1]][info_num]))))
+      }
+      if (grepl("green", test_data[[1]][info_num])) {
+        data$green[n] <- max(
+          c(data$green[n], 
+            as.numeric(gsub("[^0-9]", "", test_data[[1]][info_num]))))
+      }
+    }
+  }
+}
+
+data_reduced <- data[data$red <= 12 & data$blue <= 14 & data$green <= 13, ]
+
+sum(as.numeric(data_reduced$game_index))
+
+```
+#Day 2.2
+```{r}
+data$power <- data$red * data$blue * data$green
+sum(data$power)
+```
+#Day 3.1
+```{r}
+data <- read.delim("data/day3.txt", header = FALSE)
+data$numbers_and_symbols <- strsplit(data$V1, split = "(?=[[:punct:]])", perl = TRUE)
+
+symbols <- matrix(FALSE, nrow = 140, ncol = 140)
+data1 <- t(matrix(unlist(strsplit(data$V1, split = "")), nrow = 140, ncol = 140))
+numbers <- character()
+for (row in c(1:nrow(data1))) {
+  for (col in c(1:ncol(data1))) {
+    if (grepl("(?![.])[[:punct:]]", data1[row, col], perl = TRUE)) {
+      symbols[row, col] = TRUE
+    }
+  }
+}
+
+for (row in c(1:length(data$numbers_and_symbols))) {
+  current_row <- data$numbers_and_symbols[row][[1]]
+  for (split in c(1:length(current_row))) {
+    if (grepl("[[:digit:]]", current_row[split])) {
+      first_index <- sum(nchar(current_row[1:split-1])) +1
+      last_index <- sum(nchar(current_row[1:split-1])) + nchar(current_row[split])
+      
+      # check if there is any punctuation (other than .) around number
+      check_indexes_r1 <- c((first_index-1):(last_index+1))
+      check_indexes_r2 <- c((first_index-1), (last_index+1))
+      check_indexes_r3 <- c((first_index-1):(last_index+1))
+      
+     
+      if (first_index == 1) {
+        check_indexes_r1 <- check_indexes_r1[-1]
+        check_indexes_r2 <- check_indexes_r2[-1]
+        check_indexes_r3 <- check_indexes_r3[-1]
+      }
+      if (last_index == nchar(data$V1[row])) {
+        check_indexes_r1 <- check_indexes_r1[-length(check_indexes_r1)]
+        check_indexes_r2 <- check_indexes_r2[-length(check_indexes_r2)]
+        check_indexes_r3 <- check_indexes_r3[-length(check_indexes_r3)]
+      }
+      
+      if (row == 1) {
+        characters_to_check <- c(
+          data1[row, check_indexes_r2], 
+          data1[row + 1, check_indexes_r3]
+          )
+      } else if (row == length(data$V1)) {
+        characters_to_check <- c(
+          data1[row-1, check_indexes_r1],
+          data1[row, check_indexes_r2]
+          )
+      } else {
+        characters_to_check <- c(
+          data1[row-1, check_indexes_r1],
+          data1[row, check_indexes_r2], 
+          data1[row + 1, check_indexes_r3]
+          )
+      }
+      
+      if (any(grepl("(?![.])[[:punct:]]", characters_to_check, perl = TRUE))) {
+        numbers <- c(numbers, current_row[split])
+      }
+    }
+  }
+}
+
+sum(as.numeric(numbers))
+```
+# Day 3.2
+```{r}
+data <- read.delim("data/day3.txt", header = FALSE)
+data$numbers_and_symbols <- strsplit(data$V1, split = "(?=[[:punct:]])", perl = TRUE)
+
+asterisks <- matrix(FALSE, nrow = 140, ncol = 140)
+data1 <- t(matrix(unlist(strsplit(data$V1, split = "")), nrow = 140, ncol = 140))
+numbers <- character()
+for (row in c(1:nrow(data1))) {
+  for (col in c(1:ncol(data1))) {
+    if (grepl("\\*", data1[row, col], perl = TRUE)) {
+      asterisks[row, col] = TRUE
+    }
+  }
+}
+
+number_id_matrix <- matrix(0, nrow = 140, ncol = 140)
+for (row in c(1:length(data$numbers_and_symbols))) {
+  current_row <- data$numbers_and_symbols[row][[1]]
+  for (split in c(1:length(current_row))) {
+    if (grepl("[[:digit:]]", current_row[split])) {
+      first_index <- sum(nchar(current_row[1:split-1])) +1
+      last_index <- sum(nchar(current_row[1:split-1])) + nchar(current_row[split])
+      number_id_matrix[row, c(first_index:last_index)] <- as.numeric(current_row[split])
+    }
+  }
+}
+
+gear_ratios <- numeric()
+for (row in c(1:nrow(asterisks))) {
+  for (col in c(1:ncol(asterisks))) {
+    if (asterisks[row, col] == TRUE) {
+    # check if there is any punctuation (other than .) around number
+      check_indexes_r1 <- c(col-1, col, col+1)
+      check_indexes_r2 <- c(col-1, col+1)
+      check_indexes_r3 <- c(col-1, col, col+1)
+      
+     
+      if (col == 1) {
+        check_indexes_r1 <- check_indexes_r1[-1]
+        check_indexes_r2 <- check_indexes_r2[-1]
+        check_indexes_r3 <- check_indexes_r3[-1]
+      }
+      if (col == 140) {
+        check_indexes_r1 <- check_indexes_r1[-length(check_indexes_r1)]
+        check_indexes_r2 <- check_indexes_r2[-length(check_indexes_r2)]
+        check_indexes_r3 <- check_indexes_r3[-length(check_indexes_r3)]
+      }
+      
+      if (row == 1) {
+        positions_to_check <- c(
+          number_id_matrix[row, check_indexes_r2], 
+          number_id_matrix[row + 1, check_indexes_r3]
+          )
+      } else if (row == length(data$V1)) {
+        positions_to_check <- c(
+          number_id_matrix[row-1, check_indexes_r1],
+          number_id_matrix[row, check_indexes_r2]
+          )
+      } else {
+        positions_to_check <- c(
+          number_id_matrix[row-1, check_indexes_r1],
+          number_id_matrix[row, check_indexes_r2], 
+          number_id_matrix[row + 1, check_indexes_r3]
+          )
+      }
+      positions_to_check <- unique(positions_to_check[positions_to_check!=0])
+      if (length(positions_to_check) == 2) {
+        gear_ratios <- c(gear_ratios, positions_to_check[1] * positions_to_check[2])
+      }
+    }
+  }
+}
+
+sum(gear_ratios)
+```
+
