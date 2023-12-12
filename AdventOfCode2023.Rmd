@@ -15,6 +15,7 @@ library(magrittr)
 library(readr)
 library(stringr)
 library(dplyr)
+library(spatstat.utils)
 ```
 
 
@@ -256,3 +257,273 @@ for (row in c(1:nrow(asterisks))) {
 sum(gear_ratios)
 ```
 
+
+#Day 5.1 - HELP
+```{r}
+data <- read.delim("data/day5.txt", header = FALSE)
+
+# maps
+seed_to_soil_data <- as.numeric(unlist(strsplit(data$V1[(which(data$V1=="seed-to-soil map:")+1):(which(data$V1 == "soil-to-fertilizer map:")-1)], split = " ")))
+seed_to_soil_map <- data.frame(t(matrix(seed_to_soil_data, nrow = 3)))
+colnames(seed_to_soil_map) <- c("destination_start", "source_start", "length")
+
+soil_to_fertilizer_data <- as.numeric(unlist(strsplit(data$V1[(which(data$V1=="soil-to-fertilizer map:")+1):(which(data$V1 == "fertilizer-to-water map:")-1)], split = " ")))
+soil_to_fertilizer_map <- data.frame(t(matrix(soil_to_fertilizer_data, nrow = 3)))
+colnames(soil_to_fertilizer_map) <- c("destination_start", "source_start", "length")
+
+fertilizer_to_water_data <- as.numeric(unlist(strsplit(data$V1[(which(data$V1=="fertilizer-to-water map:")+1):(which(data$V1 == "water-to-light map:")-1)], split = " ")))
+fertilizer_to_water_map <- data.frame(t(matrix(fertilizer_to_water_data, nrow = 3)))
+colnames(fertilizer_to_water_map) <- c("destination_start", "source_start", "length")
+
+water_to_light_data <- as.numeric(unlist(strsplit(data$V1[(which(data$V1=="water-to-light map:")+1):(which(data$V1 == "light-to-temperature map:")-1)], split = " ")))
+water_to_light_map <- data.frame(t(matrix(water_to_light_data, nrow = 3)))
+colnames(water_to_light_map) <- c("destination_start", "source_start", "length")
+
+light_to_temperature_data <- as.numeric(unlist(strsplit(data$V1[(which(data$V1=="light-to-temperature map:")+1):(which(data$V1 == "temperature-to-humidity map:")-1)], split = " ")))
+light_to_temperature_map <- data.frame(t(matrix(light_to_temperature_data, nrow = 3)))
+colnames(light_to_temperature_map) <- c("destination_start", "source_start", "length")
+
+temperature_to_humidity_data <- as.numeric(unlist(strsplit(data$V1[(which(data$V1=="temperature-to-humidity map:")+1):(which(data$V1 == "humidity-to-location map:")-1)], split = " ")))
+temperature_to_humidity_map <- data.frame(t(matrix(temperature_to_humidity_data, nrow = 3)))
+colnames(temperature_to_humidity_map) <- c("destination_start", "source_start", "length")
+
+humidity_to_location_data <- as.numeric(unlist(strsplit(data$V1[(which(data$V1=="humidity-to-location map:")+1):length(data$V1)], split = " ")))
+humidity_to_location_map <- data.frame(t(matrix(humidity_to_location_data, nrow = 3)))
+colnames(humidity_to_location_map) <- c("destination_start", "source_start", "length")
+
+maps <- list(seed_to_soil_map, soil_to_fertilizer_map, fertilizer_to_water_map, water_to_light_map, light_to_temperature_map, temperature_to_humidity_map, humidity_to_location_map)
+
+seeds <- strsplit(data$V1[1], split = " ")[[1]][-1]
+df <- data.frame(seed = as.numeric(seeds), 
+                 soil = NA, 
+                 fertilizer = NA, 
+                 water = NA, 
+                 light = NA, 
+                 temperature = NA, 
+                 humidity = NA, 
+                 location = NA)
+
+# for each seed
+for (seed_row in c(1:length(df$seed))) {
+  # for each column (plant need)
+  for (col in c(1:length(colnames(df)[-1]))) {
+    #set range_found flag to FALSE
+    range_found = FALSE
+    # for each row in the map
+    for (row in c(1:length(maps[[col]]))) {
+      # check if the seed is in range
+      if (range_found == FALSE) {
+        if (inside.range(
+          df[seed_row, col], 
+          range(
+            maps[[col]]$source_start[row], 
+            maps[[col]]$source_start[row] + maps[[col]]$length[row]-1))) { #-1 as the first number counts in the range
+          # if it is, flag
+          range_found = TRUE
+          
+          #plant need destination value is the destination start value + difference between source start and source value
+          df[seed_row, col+1] <- maps[[col]]$destination_start[row] + (df[seed_row, col] - maps[[col]]$source_start[row])
+        }
+      }
+    }
+    # if range isn't found, destination is the same as source
+    if (range_found == FALSE) {
+      df[seed_row, col+1] <- df[seed_row, col]
+    }
+  }
+}
+
+min(df$location)
+```
+# Day 6.1
+```{r}
+data <- read.delim("data/day6.txt", header = FALSE)
+time <- as.numeric(strsplit(data[1, 1], split = " ")[[1]][grepl("[[:digit:]]", strsplit(data[1, 1], split = " ")[[1]])])
+distance <- as.numeric(strsplit(data[2, 1], split = " ")[[1]][grepl("[[:digit:]]", strsplit(data[2, 1], split = " ")[[1]])])
+df <- data.frame(time = time, distance = distance, race_results = NA)
+
+
+for (race in 1:nrow(df)) {
+  race_strat <- data.frame(hold_ms = NA, 
+                         sail_ms = NA, 
+                         total_distance = NA)
+  for (ms in 1:df[race, "time"]) {
+    race_strat[ms, ] <- data.frame(hold_ms = ms, 
+                                   sail_ms = df[race, "time"] - ms, 
+                                   distance = ms * (df[race, "time"] - ms))
+    
+  }
+  df[race, "race_results"] <- length(race_strat$total_distance[race_strat$total_distance > df$distance[race]])
+}
+
+prod(df$race_results)
+```
+# Day 6.2
+```{r}
+data <- read.delim("data/day6.txt", header = FALSE)
+data$V2<- as.numeric(gsub("[^0-9]", "", data$V1))
+
+
+for (ms in 1:data[1, 2]) {
+  if (ms * (data[1, 2] - ms) > data[2,2]) {
+    print(ms)
+    break
+  }
+}
+
+print(data[1,2] - 2*(ms-1)) # because inclusive
+# it's 42948149? not sure why
+```
+# Day 7.1
+```{r}
+data <- read.delim("data/day7.txt", header = FALSE)
+
+df<- as.data.frame(t(data.frame(strsplit(data$V1, split = " "))))
+colnames(df) <- c("hand", "bid")
+rownames(df) <- c(1:nrow(df))
+df$bid <- as.numeric(df$bid)
+df$type <- NA
+df$one <- NA
+df$two <- NA
+df$three <- NA
+df$four <- NA
+df$five <- NA
+
+for (row in 1:nrow(df)) {
+  split_string <- strsplit(df$hand[row], split = "")[[1]]
+  df$type[row] <- ifelse(length(unique(split_string))==1, 
+                         "five-of-a-kind", 
+                         ifelse(
+                           (length(unique(split_string))==2) &
+                           (sum(split_string %in% unique(split_string)[1]) %in% c(1,4)) &
+                           (sum(split_string %in% unique(split_string)[2]) %in% c(1,4)), 
+                            "four-of-a-kind",
+                              ifelse(
+                             (length(unique(split_string))==2) &
+                             (sum(split_string %in% unique(split_string)[1]) %in% c(2,3)) &
+                               (sum(split_string %in% unique(split_string)[2]) %in% c(2,3)),
+                             "full-house", 
+                             ifelse(
+                               (length(unique(split_string))==3) &
+                               (sum(split_string %in% unique(split_string)[1]) %in% c(1,3)) &
+                               (sum(split_string %in% unique(split_string)[2]) %in% c(1,3))&
+                               (sum(split_string %in% unique(split_string)[3]) %in% c(1,3)),
+                               "three-of-a-kind", 
+                               ifelse(
+                                  (length(unique(split_string))==3) &
+                               (sum(split_string %in% unique(split_string)[1]) %in% c(1,2)) &
+                               (sum(split_string %in% unique(split_string)[2]) %in% c(1,2)) &
+                               (sum(split_string %in% unique(split_string)[3]) %in% c(1,2)), 
+                               "two-pair", 
+                               ifelse(
+                                 (length(unique(split_string))==4), 
+                                 "one-pair", 
+                                 "high-card"))))))
+  
+  df$one[row] <- strsplit(df$hand[row], split = "")[[1]][1]
+  df$two[row] <- strsplit(df$hand[row], split = "")[[1]][2]
+  df$three[row] <- strsplit(df$hand[row], split = "")[[1]][3]
+  df$four[row] <- strsplit(df$hand[row], split = "")[[1]][4]
+  df$five[row] <- strsplit(df$hand[row], split = "")[[1]][5]
+}
+df$type <- factor(df$type, ordered = TRUE, levels = c("five-of-a-kind", "four-of-a-kind", "full-house", "three-of-a-kind", "two-pair", "one-pair", "high-card"))
+df$one <- ordered(df$one, levels = c("A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2", "1"))
+df$two <- ordered(df$two, levels = c("A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2", "1"))
+df$three <- ordered(df$three, levels = c("A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2", "1"))
+df$four <- ordered(df$four, levels = c("A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2", "1"))
+df$five <- ordered(df$five, levels = c("A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2", "1"))
+
+df <- arrange(df, df$type, df$one, df$two, df$three, df$four, df$five)
+
+df$rank <- rev(c(1:nrow(df)))
+df$total <- df$rank * df$bid
+sum(df$total)
+```
+# Day 7.2 - difficult!
+```{r}
+data <- read.delim("data/day7.txt", header = FALSE)
+
+df<- as.data.frame(t(data.frame(strsplit(data$V1, split = " "))))
+colnames(df) <- c("hand", "bid")
+rownames(df) <- c(1:nrow(df))
+df$bid <- as.numeric(df$bid)
+df$type <- NA
+df$one <- NA
+df$two <- NA
+df$three <- NA
+df$four <- NA
+df$five <- NA
+
+calcmode <- function(a) {
+  vector <- unique(a)
+  vector[which(tabulate(match(a, vector)) == max(tabulate(match(a, vector))))]
+}
+
+
+
+for (row in 1:nrow(df)) {
+  split_string <- strsplit(df$hand[row], split = "")[[1]]
+  if ("J" %in% unique(split_string)) {
+    if (length(calcmode(split_string)) > 1) {
+      split_string <- ordered(split_string, levels = rev(c("A", "K", "Q", "T", "9", "8", "7", "6", "5", "4", "3", "2", "1", "J")))
+      split_string[split_string == "J"] <- max(calcmode(split_string))
+    } else if ((calcmode(split_string) == "J") & (length(calcmode(split_string[split_string != "J"])) > 1 )) {
+      split_string <- ordered(split_string, levels = rev(c("A", "K", "Q", "T", "9", "8", "7", "6", "5", "4", "3", "2", "1", "J")))
+      split_string[split_string == "J"] <- max(calcmode(split_string[split_string != "J"]))
+    } else if ((calcmode(split_string) == "J") & length(unique(split_string))==1) {
+      split_string = split_string
+      } else if (calcmode(split_string) == "J") {
+        
+      split_string[split_string == "J"] <- calcmode(split_string[split_string != "J"])
+      }else {
+      split_string[split_string == "J"] <- calcmode(split_string)
+    }
+  }
+  df$type[row] <- ifelse(length(unique(split_string))==1, 
+                         "five-of-a-kind", 
+                         ifelse(
+                           (length(unique(split_string))==2) &
+                           (sum(split_string %in% unique(split_string)[1]) %in% c(1,4)) &
+                           (sum(split_string %in% unique(split_string)[2]) %in% c(1,4)), 
+                            "four-of-a-kind",
+                              ifelse(
+                             (length(unique(split_string))==2) &
+                             (sum(split_string %in% unique(split_string)[1]) %in% c(2,3)) &
+                               (sum(split_string %in% unique(split_string)[2]) %in% c(2,3)),
+                             "full-house", 
+                             ifelse(
+                               (length(unique(split_string))==3) &
+                               (sum(split_string %in% unique(split_string)[1]) %in% c(1,3)) &
+                               (sum(split_string %in% unique(split_string)[2]) %in% c(1,3))&
+                               (sum(split_string %in% unique(split_string)[3]) %in% c(1,3)),
+                               "three-of-a-kind", 
+                               ifelse(
+                                  (length(unique(split_string))==3) &
+                               (sum(split_string %in% unique(split_string)[1]) %in% c(1,2)) &
+                               (sum(split_string %in% unique(split_string)[2]) %in% c(1,2)) &
+                               (sum(split_string %in% unique(split_string)[3]) %in% c(1,2)), 
+                               "two-pair", 
+                               ifelse(
+                                 (length(unique(split_string))==4), 
+                                 "one-pair", 
+                                 "high-card"))))))
+  
+  df$one[row] <- strsplit(df$hand[row], split = "")[[1]][1]
+  df$two[row] <- strsplit(df$hand[row], split = "")[[1]][2]
+  df$three[row] <- strsplit(df$hand[row], split = "")[[1]][3]
+  df$four[row] <- strsplit(df$hand[row], split = "")[[1]][4]
+  df$five[row] <- strsplit(df$hand[row], split = "")[[1]][5]
+}
+df$type <- factor(df$type, ordered = TRUE, levels = c("five-of-a-kind", "four-of-a-kind", "full-house", "three-of-a-kind", "two-pair", "one-pair", "high-card"))
+df$one <- ordered(df$one, levels = c("A", "K", "Q", "T", "9", "8", "7", "6", "5", "4", "3", "2", "1", "J"))
+df$two <- ordered(df$two, levels = c("A", "K", "Q", "T", "9", "8", "7", "6", "5", "4", "3", "2", "1", "J"))
+df$three <- ordered(df$three, levels = c("A", "K", "Q", "T", "9", "8", "7", "6", "5", "4", "3", "2", "1", "J"))
+df$four <- ordered(df$four, levels = c("A", "K", "Q", "T", "9", "8", "7", "6", "5", "4", "3", "2", "1", "J"))
+df$five <- ordered(df$five, levels = c("A", "K", "Q", "T", "9", "8", "7", "6", "5", "4", "3", "2", "1", "J"))
+
+df <- arrange(df, df$type, df$one, df$two, df$three, df$four, df$five)
+
+df$rank <- rev(c(1:nrow(df)))
+df$total <- df$rank * df$bid
+sum(df$total)
+```
