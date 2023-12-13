@@ -256,8 +256,6 @@ for (row in c(1:nrow(asterisks))) {
 
 sum(gear_ratios)
 ```
-
-
 #Day 5.1 - HELP
 ```{r}
 data <- read.delim("data/day5.txt", header = FALSE)
@@ -439,7 +437,7 @@ df$rank <- rev(c(1:nrow(df)))
 df$total <- df$rank * df$bid
 sum(df$total)
 ```
-# Day 7.2 - difficult!
+# Day 7.2
 ```{r}
 data <- read.delim("data/day7.txt", header = FALSE)
 
@@ -527,3 +525,157 @@ df$rank <- rev(c(1:nrow(df)))
 df$total <- df$rank * df$bid
 sum(df$total)
 ```
+# Day 8.1
+```{r}
+data <- read.delim("data/day8.txt", header = FALSE)
+
+directions <- strsplit(data$V1[1], split = "")[[1]]
+map1 <- data[-1, ]
+map <- data.frame(location = NA, 
+                  left = NA, 
+                  right = NA)
+for (row in 1:length(map1)) {
+  string <- map1[row]
+  spl_string <-strsplit(string, split = "(\\s+)|([[:punct:]])")[[1]]
+  map[row, ] <- data.frame(location = spl_string[1], 
+                         left = spl_string[5], 
+                         right = spl_string[7])
+}
+current_location = "AAA"
+steps = 0
+direction_num = 1
+while (current_location != "ZZZ") {
+  turn <- directions[direction_num]
+  if (turn == "L") {
+    current_location <- map[map$location == current_location, "left"]
+  } else if (turn == "R") {
+    current_location <- map[map$location == current_location, "right"]
+  }
+  direction_num <- direction_num + 1
+  if (direction_num > length(directions)) {
+    direction_num  = 1
+  }
+  steps <- steps + 1
+}
+
+print(steps)
+```
+# Day 8.2 - right solution, wrong answer?
+```{r}
+library(DescTools)
+library(numbers)
+
+data <- read.delim("data/day8.txt", header = FALSE)
+
+directions <- strsplit(data$V1[1], split = "")[[1]]
+map1 <- data[-1, ]
+map <- data.frame(location = NA, 
+                  left = NA, 
+                  right = NA)
+for (row in 1:length(map1)) {
+  string <- map1[row]
+  spl_string <-strsplit(string, split = "(\\s+)|([[:punct:]])")[[1]]
+  map[row, ] <- data.frame(location = spl_string[1], 
+                         left = spl_string[5], 
+                         right = spl_string[7])
+}
+
+current_locations <- map$location[endsWith(map$location, "A")]
+steps = 0
+direction_num = 1
+steps_for_each_path <- numeric()
+for (current_location in current_locations) {
+  while (endsWith(current_location, "Z") == FALSE) {
+    turn <- directions[direction_num]
+    if (turn == "L") {
+      current_location <- map[map$location == current_location, "left"]
+    } else if (turn == "R") {
+      current_location <- map[map$location == current_location, "right"]
+    }
+    direction_num <- direction_num + 1
+    if (direction_num > length(directions)) {
+      direction_num  = 1
+    }
+    steps <- steps + 1
+  }
+  steps_for_each_path = c(steps_for_each_path, steps)
+}
+
+lcm_vector <- function(x) Reduce(LCM, x)
+lcm_vector(steps_for_each_path)
+
+primeFactors(steps_for_each_path[1])
+primeFactors(steps_for_each_path[2])
+primeFactors(steps_for_each_path[3])
+primeFactors(steps_for_each_path[4])
+primeFactors(steps_for_each_path[5])
+primeFactors(steps_for_each_path[6])
+
+xx <- 2 * 2 * 2 * 2 * 3 * 3 *11 * 43 * 73 * 197 * 283 * 337
+# 93417675267312
+xx / steps_for_each_path
+```
+# Day 9.1
+```{r}
+data <- read.delim("data/day9.txt", header = FALSE)
+
+predictions <- numeric()
+for (history in data$V1) {
+  temp_df <- list() 
+  count = 1
+  temp_df[[count]] <- as.numeric(strsplit(history, split = " ")[[1]])
+  
+  while (all(temp_df[[count]] == 0) == FALSE) {
+    count = count + 1
+    next_row <- numeric()
+    for (numbers in 1:(length(temp_df[[count - 1]])-1)) {
+      next_row <- c(next_row, temp_df[[count-1]][numbers + 1] - temp_df[[count-1]][numbers])
+    }
+    temp_df[[count]] <- next_row
+  }
+  
+  for (element in rev(1:length(temp_df))) {
+    if (element == length(temp_df)) {
+      temp_df[[element]] <- c(temp_df[[element]], 0)
+    } else {
+      temp_df[[element]] <- c(temp_df[[element]], temp_df[[element]][length(temp_df[[element]])] + temp_df[[element + 1]][length(temp_df[[element + 1]])])
+    }
+  }
+  predictions <- c(predictions, temp_df[[1]][length(temp_df[[1]])])
+}
+
+sum(predictions)
+
+```
+# Day 9.2
+```{r}
+data <- read.delim("data/day9.txt", header = FALSE)
+
+predictions <- numeric()
+for (history in data$V1) {
+  temp_df <- list() 
+  count = 1
+  temp_df[[count]] <- as.numeric(strsplit(history, split = " ")[[1]])
+  
+  while (all(temp_df[[count]] == 0) == FALSE) {
+    count = count + 1
+    next_row <- numeric()
+    for (numbers in 1:(length(temp_df[[count - 1]])-1)) {
+      next_row <- c(next_row, temp_df[[count-1]][numbers + 1] - temp_df[[count-1]][numbers])
+    }
+    temp_df[[count]] <- next_row
+  }
+  
+  for (element in rev(1:length(temp_df))) {
+    if (element == length(temp_df)) {
+      temp_df[[element]] <- c(0, temp_df[[element]])
+    } else {
+      temp_df[[element]] <- c(temp_df[[element]][1] - temp_df[[element + 1]][1], temp_df[[element]])
+    }
+  }
+  predictions <- c(predictions, temp_df[[1]][1])
+}
+
+sum(predictions)
+```
+
